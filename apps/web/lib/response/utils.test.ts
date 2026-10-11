@@ -15,6 +15,7 @@ import {
   calculateTtcTotal,
   extractChoiceIdsFromResponse,
   extractSurveyDetails,
+  getChoiceIdByValue,
   getReservedFilterEntries,
   getResponseContactAttributes,
   getResponseHiddenFields,
@@ -2075,6 +2076,74 @@ describe("extractChoiceIdsFromResponse", () => {
       );
 
       expect(result).toEqual(["choice-1"]);
+    });
+  });
+
+  describe("getChoiceIdByValue", () => {
+    const questionWithTranslations = {
+      id: "q-1",
+      name: "Question 1",
+      type: TSurveyElementTypeEnum.MultipleChoiceSingle as typeof TSurveyElementTypeEnum.MultipleChoiceSingle,
+      headline: { default: "Question" },
+      required: false,
+      choices: [
+        {
+          id: "choice-yes",
+          label: {
+            default: "Yes",
+            de: "Ja",
+            fr: "Oui",
+          },
+        },
+        {
+          id: "choice-no",
+          label: {
+            default: "No",
+            de: "Nein",
+            fr: "Non",
+          },
+        },
+      ],
+    };
+
+    test("should return correct choice ID for default language label", () => {
+      const result = getChoiceIdByValue("No", questionWithTranslations);
+      expect(result).toBe("choice-no");
+    });
+
+    test("should return correct choice ID for translated labels (de/fr)", () => {
+      expect(getChoiceIdByValue("Nein", questionWithTranslations)).toBe("choice-no");
+      expect(getChoiceIdByValue("Ja", questionWithTranslations)).toBe("choice-yes");
+      expect(getChoiceIdByValue("Oui", questionWithTranslations)).toBe("choice-yes");
+      expect(getChoiceIdByValue("Non", questionWithTranslations)).toBe("choice-no");
+    });
+
+    test("should return 'other' for non-matching or free-text answers", () => {
+      const result = getChoiceIdByValue("Custom other text", questionWithTranslations);
+      expect(result).toBe("other");
+    });
+
+    test("should return correct choice ID for pictureSelection elements", () => {
+      const pictureQuestion = {
+        id: "q-pic",
+        name: "Picture Question",
+        type: TSurveyElementTypeEnum.PictureSelection as typeof TSurveyElementTypeEnum.PictureSelection,
+        headline: { default: "Choose picture" },
+        required: false,
+        choices: [
+          {
+            id: "pic-1",
+            imageUrl: "https://example.com/pic1.png",
+          },
+          {
+            id: "pic-2",
+            imageUrl: "https://example.com/pic2.png",
+          },
+        ],
+      };
+
+      expect(getChoiceIdByValue("https://example.com/pic1.png", pictureQuestion)).toBe("pic-1");
+      expect(getChoiceIdByValue("https://example.com/unknown.png", pictureQuestion)).toBe("other");
     });
   });
 });
